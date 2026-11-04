@@ -23,9 +23,9 @@
 
 The Tic-Tac-Toe Web Application is a simple full-stack web application that allows two people to play Tic-Tac-Toe against each other on the same device. Players enter their names, take turns marking a 3×3 board, and the system automatically detects a win or a draw and shows the result.
 
-Completed games are saved in a Microsoft SQL Server database through an ASP.NET Core Web API. The saved data powers a **Scoreboard** (total wins per player) and a **Game History** page (list of previous matches).
+Completed games are verified by the server and then saved in a Microsoft SQL Server database by a single ASP.NET Core MVC application, which also serves the pages the players see. The saved data powers a **Scoreboard** (total wins per player) and a **Game History** page (list of previous matches).
 
-The project is intentionally small and beginner-friendly. It demonstrates core full-stack skills: a responsive user interface, a REST-style API, database persistence, and clear requirements documentation. It does not include online multiplayer, chat, payments, complex authentication, or computer-controlled opponents.
+The project is intentionally small and beginner-friendly. It demonstrates core full-stack skills: a responsive user interface, a single ASP.NET Core MVC application, server-side validation, database persistence, and clear requirements documentation. It does not include online multiplayer, chat, payments, complex authentication, or computer-controlled opponents.
 
 ---
 
@@ -36,8 +36,8 @@ The project is intentionally small and beginner-friendly. It demonstrates core f
 | **Project Name** | Tic-Tac-Toe Web Application |
 | **Project Type** | Full-Stack Web Application |
 | **Purpose** | Provide a web-based Tic-Tac-Toe game for two players on the same device |
-| **Frontend** | HTML5, CSS3, Bootstrap 5, JavaScript |
-| **Backend** | ASP.NET Core Web API |
+| **Frontend (Views)** | Razor Views inside the MVC application, using HTML5, CSS3, Bootstrap 5, and JavaScript |
+| **Backend** | ASP.NET Core MVC (single application; no separate frontend project) |
 | **Database** | Microsoft SQL Server |
 | **ORM** | Entity Framework Core |
 
@@ -85,8 +85,9 @@ Deliver a working, easy-to-use, two-player Tic-Tac-Toe web application with pers
 | OBJ-002 | Automatically determine the game outcome | 100% of wins and draws are detected correctly |
 | OBJ-003 | Store every completed game in the database | Each finished game appears in Game History |
 | OBJ-004 | Show cumulative wins per player | Scoreboard totals match the saved game records |
-| OBJ-005 | Demonstrate the full-stack architecture | Frontend, Web API, EF Core, and SQL Server work together |
+| OBJ-005 | Demonstrate the full-stack architecture | Views, Controllers, Models, EF Core, and SQL Server work together in one ASP.NET Core MVC application |
 | OBJ-006 | Produce documentation that guides later project stages | PRD is sufficient to begin the SRS, use cases, database design, and UI/UX design |
+| OBJ-007 | Save only valid, non-duplicated results | The server rejects every result that does not match the final board state, and one game never creates two records |
 
 ---
 
@@ -128,8 +129,9 @@ There is only one functional role in the system: the **Player**. No login, admin
 | SC-007 | Restart game functionality |
 | SC-008 | Scoreboard showing wins per player |
 | SC-009 | Game history showing previous matches |
-| SC-010 | Saving completed games in SQL Server through an ASP.NET Core Web API using Entity Framework Core |
+| SC-010 | Saving completed games in SQL Server through an ASP.NET Core MVC controller using Entity Framework Core, after the server has re-verified the submitted result against the final board state |
 | SC-011 | Responsive layout using Bootstrap 5 |
+| SC-012 | Prevention of duplicate saves (one save request per completed game from the browser) |
 
 ### 7.2 Out of Scope
 
@@ -202,7 +204,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 
 | ID | Requirement | Expected System Behavior |
 |---|---|---|
-| FR-024 | Save completed game | When a game ends in a win or a draw, the system shall send the result to the ASP.NET Core Web API, which shall store it in the SQL Server database through Entity Framework Core. |
+| FR-024 | Save completed game | When a game ends in a win or a draw, the system shall submit the result and the final board state to an ASP.NET Core MVC controller action, which shall verify it (FR-040) and then store it in the SQL Server database through Entity Framework Core. |
 | FR-025 | Saved game data | Each saved game shall record: a unique game ID, the Player X name, the Player O name, the result (X win, O win, or draw), the winner's name (empty for a draw), and the date and time the game ended. |
 | FR-026 | Save failure message | If saving fails, the system shall show an error message to the players. The game result shall still be displayed on screen. |
 
@@ -225,14 +227,21 @@ There is only one functional role in the system: the **Player**. No login, admin
 | FR-034 | History ordering | The history shall list the most recent game first. |
 | FR-035 | Empty history | If no games have been saved, the page shall display a message such as "No games have been played yet." |
 
-### 8.9 Backend API Operations
+### 8.9 Controller Actions and Server-Side Validation
 
 | ID | Requirement | Expected System Behavior |
 |---|---|---|
-| FR-036 | Save-game operation | The Web API shall provide an operation that accepts a completed game's data and stores it. |
-| FR-037 | Get-history operation | The Web API shall provide an operation that returns all saved games, most recent first. |
-| FR-038 | Get-scoreboard operation | The Web API shall provide an operation that returns each winning player's name and total wins. |
-| FR-039 | Input validation on server | The Web API shall reject game data that is incomplete or invalid (for example, a missing player name or an unrecognized result) and return an error response. |
+| FR-036 | Save-game action | The MVC application shall provide a controller action that accepts a completed game's data (player names, claimed result, and the final board state) and, once it has passed the checks in FR-039 and FR-040, stores it. The final board state is used only for verification and is not stored (see FR-025). |
+| FR-037 | Get-history action | The MVC application shall provide a controller action that retrieves all saved games, most recent first, and displays them in the Game History view. |
+| FR-038 | Get-scoreboard action | The MVC application shall provide a controller action that calculates each winning player's name and total wins and displays them in the Scoreboard view. |
+| FR-039 | Input validation on server | The server shall reject game data that is incomplete or invalid (for example, a missing player name, a name longer than 20 characters, identical player names (not case-sensitive), a board that does not contain exactly nine cells, or an unrecognized result) and return an error response. The server shall not rely on the browser having performed the same checks. |
+| FR-040 | Server-side result re-verification | Before saving, the server shall independently re-verify the submitted result against the submitted final board state, following business rules BR-021 to BR-024. If the result does not match the board, the server shall not save the game and shall return an error response, which the browser shall show as a save-failure message (FR-026). |
+
+### 8.10 Duplicate Save Prevention
+
+| ID | Requirement | Expected System Behavior |
+|---|---|---|
+| FR-041 | Single save per game | The browser shall send the save request only once for each completed game. As soon as the request is sent, the browser shall mark that game as "submitted", disable any save-related control (including a retry control, if one is shown), and ignore any further attempt to save the same game, such as a double-click. A new save request is allowed only for a new game that has been started and completed. |
 
 ---
 
@@ -261,7 +270,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 | ID | Requirement |
 |---|---|
 | NFR-009 | Game rules (turns, win, draw) shall behave identically every time with no incorrect outcomes. |
-| NFR-010 | A completed game shall be saved exactly once; one game shall not create duplicate records. |
+| NFR-010 | A completed game shall be saved exactly once; one game shall not create duplicate records, including when the player double-clicks or repeats an action (see FR-041). |
 | NFR-011 | If the backend or database is unavailable, the application shall display an error message and shall not crash or freeze. |
 | NFR-012 | Saved data shall remain in the database after the application or browser is closed. |
 
@@ -269,17 +278,17 @@ There is only one functional role in the system: the **Player**. No login, admin
 
 | ID | Requirement |
 |---|---|
-| NFR-013 | The Web API shall validate all incoming data on the server side. |
+| NFR-013 | The server shall validate all incoming data on the server side, including re-verification of each submitted result against the final board state (FR-039, FR-040). |
 | NFR-014 | Database access shall use Entity Framework Core (parameterized queries) to prevent SQL injection. |
 | NFR-015 | Player names displayed on pages shall be output safely so that entered text cannot run as script (protection against cross-site scripting). |
-| NFR-016 | The database connection details shall not be visible in frontend code. |
+| NFR-016 | The database connection details shall not be visible in client-side code (Views and JavaScript). |
 | NFR-017 | The application shall collect only player names, game results, and timestamps. No other personal data shall be collected. |
 
 ### 9.5 Maintainability
 
 | ID | Requirement |
 |---|---|
-| NFR-018 | The frontend, Web API, and database layers shall be kept separate. |
+| NFR-018 | The Model, View, and Controller layers of the MVC application, and the database layer, shall be kept separate. |
 | NFR-019 | Code shall use meaningful names and short explanatory comments. |
 | NFR-020 | Database structure shall be created and updated through Entity Framework Core. |
 | NFR-021 | The project shall be stored in a version control repository with a README describing how to set up and run it. |
@@ -308,7 +317,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 | US-009 | As a player, I want to see the result clearly at the end of a game, so that we both know the outcome. | FR-019 |
 | US-010 | As a player, I want to restart the game, so that we can play again quickly. | FR-020 to FR-022 |
 | US-011 | As a player, I want to play with different names, so that other people can use the same device. | FR-023 |
-| US-012 | As a player, I want my completed games saved, so that results are not lost. | FR-024 to FR-026 |
+| US-012 | As a player, I want my completed games saved once and only when the result is valid, so that results are not lost, duplicated, or wrong. | FR-024 to FR-026, FR-039 to FR-041 |
 | US-013 | As a player, I want to view a scoreboard of wins, so that we can see who has won the most games. | FR-027 to FR-031 |
 | US-014 | As a player, I want to view a history of previous matches, so that I can review past results. | FR-032 to FR-035 |
 
@@ -326,7 +335,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 | 4 | Player X selects a cell | X is placed; turn switches to Player O |
 | 5 | Players continue alternating | After each move, system checks for a win or a draw |
 | 6 | A line of three is completed, or the board fills | Result is shown (winner or draw); the board is locked |
-| 7 | — | System saves the game result through the Web API |
+| 7 | — | Browser submits the result and final board once; the server re-verifies it and saves the game through the MVC controller |
 | 8 | Selects **Restart Game** | Board is cleared; Player X starts again with the same names |
 | 9 | Selects **Scoreboard** | Wins per player are displayed |
 | 10 | Selects **Game History** | Previous matches are displayed, newest first |
@@ -351,6 +360,8 @@ There is only one functional role in the system: the **Player**. No login, admin
 | Click on an occupied cell | Ignore the click; turn does not change |
 | Restart during an unfinished game | Clear the board; do not save the game |
 | Save to database fails | Show an error message; the result stays visible on screen |
+| Server rejects a result that does not match the board | Do not save the game; show a save-failure message; the result stays visible on screen |
+| Player double-clicks or repeats the save action | Only one request is sent; save-related controls are disabled after the first request; only one record is stored |
 | No saved games yet | Scoreboard and History pages show an empty-state message |
 
 ---
@@ -402,6 +413,16 @@ There is only one functional role in the system: the **Player**. No login, admin
 | BR-019 | Scores are calculated from saved game records and are never edited manually. |
 | BR-020 | Restarting a game does not change existing scores. |
 
+### 12.6 Result Verification and Saving
+
+| ID | Rule |
+|---|---|
+| BR-021 | The server treats the submitted final board state as the source of truth and works out the outcome (X win, O win, or draw) from it itself; it does not trust the outcome claimed by the browser. |
+| BR-022 | A board is valid only if it has nine cells, each empty, X, or O, and the number of X marks equals the number of O marks or is exactly one more (X always plays first). |
+| BR-023 | A submitted result is accepted only if it matches the board: an X win requires a winning line for X (and none for O) with X having one more mark than O; an O win requires a winning line for O (and none for X) with equal numbers of marks; a draw requires all nine cells filled and no winning line. A board that is unfinished is rejected. |
+| BR-024 | A game that fails verification is not saved and does not affect the scoreboard or history. The winner's name that is saved comes from the verified outcome (the name of Player X or Player O), not from a separate value supplied by the browser. |
+| BR-025 | The browser sends one save request per completed game (see FR-041). |
+
 ---
 
 ## 13. Assumptions and Constraints
@@ -412,7 +433,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 |---|---|
 | AS-001 | Both players share one device and one browser window. |
 | AS-002 | Players have a modern web browser with JavaScript enabled. |
-| AS-003 | The backend and SQL Server database are running whenever results are saved or viewed. |
+| AS-003 | The ASP.NET Core MVC application and the SQL Server database are running whenever results are saved or viewed. |
 | AS-004 | Players are identified only by the names they type; there are no accounts. |
 | AS-005 | The scoreboard and history are shared by everyone who uses the same installation of the application. |
 | AS-006 | The application is deployed locally or on a simple host for demonstration, with a small number of users. |
@@ -421,11 +442,12 @@ There is only one functional role in the system: the **Player**. No login, admin
 
 | ID | Constraint |
 |---|---|
-| CN-001 | The technology stack is fixed: HTML5, CSS3, Bootstrap 5, JavaScript, ASP.NET Core Web API, SQL Server, and Entity Framework Core. |
+| CN-001 | The technology stack is fixed: HTML5, CSS3, Bootstrap 5, JavaScript, ASP.NET Core MVC (a single application with no separate frontend), SQL Server, and Entity Framework Core. |
 | CN-002 | The project must be completed within the course schedule by a student or a small team. |
 | CN-003 | The application is limited to two players on the same device. |
 | CN-004 | The application contains no AI functionality; AI is used only as a development assistant. |
 | CN-005 | No paid services or third-party paid tools are required. |
+| CN-006 | In this version, no unique game token exists on the server. Duplicate-save prevention relies on the browser behavior in FR-041. |
 
 ---
 
@@ -434,7 +456,7 @@ There is only one functional role in the system: the **Player**. No login, admin
 | ID | Dependency | Purpose |
 |---|---|---|
 | DP-001 | Bootstrap 5 | Responsive layout and interface components |
-| DP-002 | ASP.NET Core (.NET) runtime and SDK | Building and running the Web API |
+| DP-002 | ASP.NET Core (.NET) runtime and SDK | Building and running the MVC application |
 | DP-003 | Entity Framework Core | Database access and database creation through the ORM |
 | DP-004 | Microsoft SQL Server | Storage of game records |
 | DP-005 | Modern web browser | Running the frontend |
@@ -466,11 +488,12 @@ There is only one functional role in the system: the **Player**. No login, admin
 | AC-005 | Winner detection | All 8 winning lines are detected for both X and O; the winner is displayed and cells are highlighted; the board locks. | FR-015 to FR-017, FR-019 |
 | AC-006 | Draw detection | A full board with no winning line shows a draw; a win on the ninth move is shown as a win. | FR-018, FR-019 |
 | AC-007 | Restart | Restart clears the board, keeps names, gives X the first turn, and does not save an unfinished game. | FR-020 to FR-022 |
-| AC-008 | Saving | Each completed game is stored exactly once with all required fields. | FR-024, FR-025, FR-036 |
+| AC-008 | Saving | Each completed game is stored exactly once with all required fields, even if the player double-clicks or repeats the action quickly. | FR-024, FR-025, FR-036, FR-041 |
 | AC-009 | Scoreboard | Scoreboard shows correct win totals in descending order; draws do not add points; an empty-state message shows when there are no wins. | FR-027 to FR-031 |
 | AC-010 | Game History | History shows all saved games with required columns, newest first; an empty-state message shows when empty. | FR-032 to FR-035 |
 | AC-011 | Error handling | Failed saves and server errors produce a clear message without crashing the application. | FR-026, FR-039, NFR-011 |
 | AC-012 | Responsiveness and compatibility | All pages are usable on desktop and phone screens in Chrome, Edge, Firefox, and Safari. | NFR-006, NFR-022 |
+| AC-013 | Server-side verification | The server saves a submitted result only if it matches the final board state; a result with a mismatched board, an impossible board, or invalid names is rejected and not saved, and an error message is shown. | FR-039, FR-040, NFR-013 |
 
 ---
 
@@ -487,6 +510,7 @@ The following ideas are **not part of the current scope** and are listed only fo
 | FE-005 | Light and dark display themes |
 | FE-006 | Optional sound effects |
 | FE-007 | Optional move timer per turn |
+| FE-008 | Unique game token issued and checked by the server to prevent duplicate records at the server level |
 
 ---
 
@@ -494,10 +518,11 @@ The following ideas are **not part of the current scope** and are listed only fo
 
 | Term | Definition |
 |---|---|
-| **ASP.NET Core Web API** | A Microsoft framework used to build the backend service that the frontend calls to save and retrieve data. |
+| **ASP.NET Core MVC** | A Microsoft framework for building web applications using the Model-View-Controller pattern. In this project, one MVC application provides both the pages players see and the server logic that verifies, saves, and retrieves game data. |
 | **Board** | The 3×3 grid on which the game is played. |
 | **Bootstrap 5** | A CSS framework used to create responsive page layouts and components. |
 | **Cell** | One of the nine squares on the board. |
+| **Controller** | The part of the MVC application that receives requests from the browser, validates them, works with the data, and chooses the View to display. |
 | **Draw** | A game that ends with a full board and no winner. |
 | **Entity Framework Core (EF Core)** | An Object-Relational Mapper that lets the backend work with database tables using .NET objects. |
 | **Game History** | A list of previously completed matches. |
@@ -507,10 +532,11 @@ The following ideas are **not part of the current scope** and are listed only fo
 | **PRD** | Product Requirements Document. |
 | **Restart** | Clearing the board to begin a new game with the same players. |
 | **Scoreboard** | A list showing the total number of wins for each player. |
+| **Server-Side Validation** | Checking of submitted data by the server itself, including re-verifying a game result against the final board state, before anything is saved. |
 | **SQL Server** | Microsoft's relational database system used to store game data. |
 | **SRS** | Software Requirements Specification, the next document in the project. |
 | **Turn** | The period in which one player makes one move. |
-| **Web API** | A set of backend operations that the frontend calls over HTTP. |
+| **View** | A page template (Razor View) in the MVC application that is displayed in the browser. |
 | **Winning Line** | Three identical symbols in a row, column, or diagonal. |
 
 ---
@@ -540,6 +566,8 @@ The project description did not specify the following points. They were defined 
 | 3 | Only completed games are saved (FR-022, BR-015). | Prevents incomplete records in history. |
 | 4 | Restart keeps the same names; changing players is done from the setup screen (FR-021, FR-023). | Gives a clear, simple meaning to "restart." |
 | 5 | Draws are saved in history but not counted on the scoreboard (BR-017). | The scoreboard is defined as wins only. |
-| 6 | Game rules run in the browser (JavaScript); the backend stores and retrieves results. | Keeps the backend simple and beginner-friendly. |
+| 6 | Gameplay (turns, win, and draw detection) runs in the browser (JavaScript) for instant feedback; the server re-verifies every submitted result against the final board state before saving it (FR-040). | Keeps the game responsive while ensuring the database receives only results that are consistent with a valid board. |
+| 7 | The application is a single ASP.NET Core MVC application with no separate frontend (replacing the earlier Web API design). | Required by the architecture document. |
+| 8 | Duplicate saves are prevented by the browser sending one request per game and disabling save-related controls after the first request (FR-041); no server-side game token is used. | The architecture document provides no unique game token in this version. |
 
 *End of Document*

@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Tic Tac Toe</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav" aria-label="Main">
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                <span class="brand-grid" aria-hidden="true">
+                    <span class="bx">X</span><span></span><span></span>
+                    <span></span><span class="bo">O</span><span></span>
+                    <span></span><span></span><span class="bx">X</span>
+                </span>
+                <span>Tic Tac Toe</span>
+            </a>
+            <span class="nav-note">Two players. One grid. No sign-up.</span>
+        </nav>
+    </header>
+
+    <main class="site-main">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <span>Built for a friendly match.</span>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

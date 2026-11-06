@@ -1,0 +1,96 @@
+@model GameViewModel
+@{
+    ViewData["Title"] = "Room " + Model.Room.RoomCode;
+}
+
+<section class="game-layout" aria-labelledby="room-title">
+    <header class="game-header">
+        <div>
+            <p class="room-label">Room code</p>
+            <h1 class="room-code" id="room-title">@Model.Room.RoomCode</h1>
+        </div>
+        <span class="status-chip @Model.StatusClass" data-status-chip role="status" aria-live="polite">@Model.StatusText</span>
+    </header>
+
+    <div class="game-body">
+        <div class="board-wrap">
+            <div class="board"
+                 role="group"
+                 aria-label="Tic Tac Toe board"
+                 data-game-board
+                 data-room-code="@Model.Room.RoomCode"
+                 data-player-symbol="@Model.CurrentPlayer.Symbol">
+                @for (int i = 0; i < 9; i++)
+                {
+                    char cell = Model.Room.Board[i];
+                    string markClass = cell == 'X' ? "mark-x" : cell == 'O' ? "mark-o" : string.Empty;
+                    string cellLabel = cell == '-' ? "empty" : cell.ToString();
+                    <button type="button"
+                            class="board-cell @markClass"
+                            data-cell-index="@i"
+                            aria-label="Cell @(i + 1): @cellLabel"
+                            disabled>@(cell == '-' ? string.Empty : cell.ToString())</button>
+                }
+            </div>
+
+            <p class="board-note connection-note" data-connection-note role="status" aria-live="polite">Connecting to the live board...</p>
+            <p class="move-error" data-move-error role="alert" aria-live="assertive" hidden></p>
+
+            <noscript>
+                <p class="board-note">Live moves need JavaScript. Enable it and refresh the page.</p>
+            </noscript>
+        </div>
+
+        <aside class="players-panel" aria-labelledby="players-title">
+            <h2 id="players-title">Players</h2>
+            <ul class="player-list" data-player-list>
+                @foreach (var player in Model.Room.Players)
+                {
+                    bool isYou = player.PlayerId == Model.CurrentPlayer.PlayerId;
+                    string playerClass = isYou ? "player is-you" : "player";
+                    string symbolClass = player.Symbol == PlayerSymbol.X ? "mark-x" : "mark-o";
+                    <li class="@playerClass">
+                        <span class="player-symbol @symbolClass" aria-label="@player.Symbol">@player.Symbol</span>
+                        <span class="player-name">@player.DisplayName</span>
+                        <span class="player-meta">
+                            <span class="player-note">@(isYou ? "you" : "opponent")</span>
+                            <span class="player-presence @(player.IsConnected ? "is-online" : "is-offline")">@(player.IsConnected ? "online" : "offline")</span>
+                        </span>
+                    </li>
+                }
+            </ul>
+
+            @if (Model.IsWaitingForOpponent)
+            {
+                <p class="waiting-note" data-game-note role="status" aria-live="polite">Share the room code <strong>@Model.Room.RoomCode</strong> with a friend. The board unlocks when they join.</p>
+            }
+            else if (Model.Room.Status == GameStatus.InProgress)
+            {
+                <p class="waiting-note" data-game-note role="status" aria-live="polite">
+                    @if (!Model.OpponentIsConnected)
+                    {
+                        <text>@(Model.Opponent?.DisplayName ?? "Your opponent") is offline. The board will sync when they return.</text>
+                    }
+                    else
+                    {
+                        @(Model.IsMyTurn ? "You have the next move." : "Waiting for the other player.")
+                    }
+                </p>
+            }
+            else
+            {
+                <p class="waiting-note" data-game-note role="status" aria-live="polite">The match has ended.</p>
+            }
+
+            <div class="rematch-box" data-rematch-box @(Model.IsGameOver ? "" : "hidden")>
+                <p class="rematch-note" data-rematch-note role="status" aria-live="polite">@Model.RematchNote</p>
+                <button type="button" class="btn-play btn-rematch" data-rematch-button disabled="@Model.RematchButtonDisabled">@Model.RematchButtonText</button>
+            </div>
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js" asp-append-version="true"></script>
+    <script src="~/js/game.js" asp-append-version="true"></script>
+}

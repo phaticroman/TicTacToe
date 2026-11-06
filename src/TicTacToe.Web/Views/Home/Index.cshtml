@@ -1,0 +1,53 @@
+﻿@model HomeViewModel
+@{
+    ViewData["Title"] = "Play";
+}
+
+<section class="home-layout" aria-labelledby="home-title">
+    <div class="home-intro">
+        <p class="eyebrow">Online Tic Tac Toe</p>
+        <h1 id="home-title">Draw a friend into a quick match.</h1>
+        <p class="home-lead">Create a room, share the six-character code, and take turns on the same board. X always goes first.</p>
+
+        <div class="decor-board" aria-hidden="true">
+            <span class="mark-x">X</span><span></span><span class="mark-o">O</span>
+            <span></span><span class="mark-x">X</span><span></span>
+            <span class="mark-o">O</span><span></span><span class="mark-x">X</span>
+        </div>
+    </div>
+
+    <div class="play-panel">
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <section class="play-section" aria-labelledby="create-title">
+            <h2 id="create-title">Start a room</h2>
+            <p>You will play as X and move first.</p>
+
+            <form asp-controller="Home" asp-action="Create" method="post" class="play-form">
+                <label asp-for="Create.DisplayName" class="form-label"></label>
+                <input asp-for="Create.DisplayName" class="form-control" autocomplete="nickname" maxlength="20" placeholder="Your name" />
+                <span asp-validation-for="Create.DisplayName" class="field-error"></span>
+                <button type="submit" class="btn-play">Create room</button>
+            </form>
+        </section>
+
+        <div class="play-divider"><span>or join one</span></div>
+
+        <section class="play-section" aria-labelledby="join-title">
+            <h2 id="join-title">Join a room</h2>
+            <p>Ask the host for their room code.</p>
+
+            <form asp-controller="Home" asp-action="Join" method="post" class="play-form">
+                <label asp-for="Join.RoomCode" class="form-label"></label>
+                <input asp-for="Join.RoomCode" class="form-control room-code-input" autocomplete="off" maxlength="6" placeholder="ABC123" />
+                <span asp-validation-for="Join.RoomCode" class="field-error"></span>
+
+                <label asp-for="Join.DisplayName" class="form-label"></label>
+                <input asp-for="Join.DisplayName" class="form-control" autocomplete="nickname" maxlength="20" placeholder="Your name" />
+                <span asp-validation-for="Join.DisplayName" class="field-error"></span>
+
+                <button type="submit" class="btn-play btn-outline-ink">Join room</button>
+            </form>
+        </section>
+    </div>
+</section>

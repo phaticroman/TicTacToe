@@ -20,14 +20,16 @@
 
 ## 2. Design Overview
 
-The database stores only what is needed to run a game: rooms and the players inside them. It maps directly to the two Domain entities, `GameRoom` and `GamePlayer`.
+The database stores what is needed to run a game: rooms, the players inside them, and a summary row for each finished match. It maps to the `GameRoom`, `GamePlayer`, and `GameResult` entities.
 
 | Principle | Decision |
 |---|---|
-| Keep it simple | Two tables. No users, accounts, chat, or history (all out of scope). |
+| Keep it simple | Three tables. No users, accounts, chat, or move-by-move log. |
 | Server is the authority | The current board and turn are stored on the server, never taken from the browser. |
 | Support reconnection | Game state is saved after every change, so a player can return to the same room. |
 | Support rematch | The same room and players are reused; only the game state is reset. |
+| Room match history | Each finished game adds a `GameResult` row so the room can show previous rounds across rematches. |
+| Room scorecard | Matches played, draws, and wins per player are derived from `GameResults`; no extra table is needed. |
 
 ---
 
@@ -36,6 +38,7 @@ The database stores only what is needed to run a game: rooms and the players ins
 ```mermaid
 erDiagram
     GAME_ROOM ||--o{ GAME_PLAYER : "has up to 2"
+    GAME_ROOM ||--o{ GAME_RESULT : "records finished rounds"
 
     GAME_ROOM {
         guid Id PK
@@ -58,9 +61,17 @@ erDiagram
         bool WantsRematch
         datetime JoinedAt
     }
+
+    GAME_RESULT {
+        guid Id PK
+        guid RoomId FK
+        int RoundNumber
+        string WinnerSymbol
+        datetime EndedAt
+    }
 ```
 
-**Relationship:** One `GameRoom` has zero to two `GamePlayer` records. Each `GamePlayer` belongs to exactly one room.
+**Relationships:** One `GameRoom` has zero to two `GamePlayer` records and any number of `GameResult` records. Each player and result belongs to exactly one room.
 
 ---
 
@@ -96,6 +107,18 @@ Stores one row per guest player in a room.
 | WantsRematch | bit | No | `1` when the player has requested a rematch. Reset when a new game starts. |
 | JoinedAt | datetime2 | No | When the player joined the room (UTC). |
 
+### 4.3 GameResults
+
+Stores one row per finished game in a room. Rows are kept when a rematch starts.
+
+| Column | Data Type | Null | Description |
+|---|---|---|---|
+| Id | uniqueidentifier | No | Primary key. |
+| RoomId | uniqueidentifier | No | Foreign key to `GameRooms.Id`. |
+| RoundNumber | int | No | Sequential game number within the room, starting at 1. |
+| WinnerSymbol | char(1) | Yes | `X` or `O` for a win. `NULL` for a draw. |
+| EndedAt | datetime2 | No | When the game ended (UTC). |
+
 ---
 
 ## 5. Allowed Values
@@ -123,6 +146,10 @@ Stores one row per guest player in a room.
 | GameRooms | Board | Check constraint | Must be exactly 9 characters, each `-`, `X`, or `O`. |
 | GameRooms | Status | Check constraint | Must be one of the allowed values in Section 5. |
 | GamePlayers | Symbol | Check constraint | Must be `X` or `O`. |
+| GameResults | Id | Primary key | Identifies the finished game. |
+| GameResults | RoomId | Foreign key, cascade delete | Links the result to a room. Deleting a room removes its history. |
+| GameResults | (RoomId, RoundNumber) | Unique index | Guarantees one result per round number in a room. |
+| GameResults | WinnerSymbol | Check constraint | Must be `X`, `O`, or `NULL`. |
 
 ---
 
@@ -131,7 +158,8 @@ Stores one row per guest player in a room.
 | Decision | Reason |
 |---|---|
 | Board stored as one 9-character text value | The board is small and fixed (3x3). One column is simpler than nine columns or a separate moves table, and it is loaded and saved in a single step. |
-| No Moves table | Match history is out of scope. Only the current state is needed. |
+| No Moves table | The room shows match results, not a move-by-move replay. One summary row per finished game is enough. |
+| Scorecard derived from `GameResults` | Total matches are the number of result rows, draws are rows with `WinnerSymbol = NULL`, and player wins are rows matching that player's symbol. Keeping it derived avoids duplicated counters that could drift. |
 | Symbols and turn stored on the server | Supports the rule that the server validates every move and never trusts the browser. |
 | `RowVersion` on GameRooms | Prevents two near-simultaneous updates from overwriting each other. The second update is rejected and the player sees the latest board. |
 | `Id` used as guest player ID | There is no login, so the server-issued player ID identifies a guest and is checked against the room on every action. |
@@ -143,14 +171,14 @@ Stores one row per guest player in a room.
 
 ## 8. State Changes by Operation
 
-| Operation | GameRooms | GamePlayers |
-|---|---|---|
-| Create room | New row. Empty board, `Status = WaitingForPlayer`, new unique `RoomCode`. | New row for the creator with symbol assigned, `IsConnected = 1`. |
-| Join room | `Status` changes to `InProgress`. `CurrentTurn = X`. | New row for the second player with the remaining symbol. |
-| Make move | `Board` updated. `CurrentTurn` switches, or `Status` and `WinnerSymbol` are set if the game ends. | No change. |
-| Disconnect / reconnect | No change. | `IsConnected` updated. |
-| Request rematch | No change. | `WantsRematch = 1` for the requesting player. |
-| Start rematch (both agreed) | Board cleared, `Status = InProgress`, `CurrentTurn = X`, `WinnerSymbol` cleared. | `WantsRematch = 0` for both players. |
+| Operation | GameRooms | GamePlayers | GameResults |
+|---|---|---|---|
+| Create room | New row. Empty board, `Status = WaitingForPlayer`, new unique `RoomCode`. | New row for the creator with symbol assigned, `IsConnected = 0` until the hub joins. | No change. |
+| Join room | `Status` changes to `InProgress`. `CurrentTurn = X`. | New row for the second player with the remaining symbol. | No change. |
+| Make move | `Board` updated. `CurrentTurn` switches, or `Status` and `WinnerSymbol` are set if the game ends. | No change. | No change on a normal move. A new row is added when the move ends the game. |
+| Disconnect / reconnect | No change. | `IsConnected` updated. | No change. |
+| Request rematch | No change. | `WantsRematch = 1` for the requesting player. | No change. |
+| Start rematch (both agreed) | Board cleared, `Status = InProgress`, `CurrentTurn = X`, `WinnerSymbol` cleared. | `WantsRematch = 0` for both players. | Previous rows are kept. |
 
 ---
 

@@ -178,6 +178,16 @@ public class GameServiceTests
         Assert.Equal(GameStatus.Won, room.Status);
         Assert.Equal(PlayerSymbol.X, room.WinnerSymbol);
         Assert.Null(room.CurrentTurn);
+        RoomHistoryInfo history = Assert.Single(room.History);
+        Assert.Equal(1, history.RoundNumber);
+        Assert.Equal(PlayerSymbol.X, history.WinnerSymbol);
+        Assert.Equal("Alice", history.WinnerName);
+        Assert.True(history.EndedAt <= DateTime.UtcNow);
+
+        Assert.Equal(1, room.Stats.MatchesPlayed);
+        Assert.Equal(0, room.Stats.Draws);
+        Assert.Equal(1, room.Stats.Players.Single(p => p.PlayerId == game.XPlayerId).Wins);
+        Assert.Equal(0, room.Stats.Players.Single(p => p.PlayerId == game.OPlayerId).Wins);
 
         GameActionResult afterWin = await MoveAsync(game, game.OPlayerId, 5);
         Assert.False(afterWin.Success);
@@ -188,16 +198,8 @@ public class GameServiceTests
     public async Task MakeMove_DetectsDraw()
     {
         using TestGame game = await CreateStartedGameAsync();
-        await MoveAsync(game, game.XPlayerId, 0);
-        await MoveAsync(game, game.OPlayerId, 1);
-        await MoveAsync(game, game.XPlayerId, 2);
-        await MoveAsync(game, game.OPlayerId, 4);
-        await MoveAsync(game, game.XPlayerId, 3);
-        await MoveAsync(game, game.OPlayerId, 5);
-        await MoveAsync(game, game.XPlayerId, 7);
-        await MoveAsync(game, game.OPlayerId, 6);
 
-        GameActionResult result = await MoveAsync(game, game.XPlayerId, 8);
+        GameActionResult result = await FinishDrawAsync(game);
 
         Assert.True(result.Success, result.Error);
         RoomInfo room = result.Room!;
@@ -205,6 +207,14 @@ public class GameServiceTests
         Assert.Equal(GameStatus.Draw, room.Status);
         Assert.Null(room.WinnerSymbol);
         Assert.Null(room.CurrentTurn);
+        RoomHistoryInfo history = Assert.Single(room.History);
+        Assert.Equal(1, history.RoundNumber);
+        Assert.Null(history.WinnerSymbol);
+        Assert.Null(history.WinnerName);
+
+        Assert.Equal(1, room.Stats.MatchesPlayed);
+        Assert.Equal(1, room.Stats.Draws);
+        Assert.All(room.Stats.Players, p => Assert.Equal(0, p.Wins));
     }
 
     [Fact]
@@ -255,12 +265,51 @@ public class GameServiceTests
         Assert.Equal(PlayerSymbol.X, room.CurrentTurn);
         Assert.Null(room.WinnerSymbol);
         Assert.All(room.Players, p => Assert.False(p.WantsRematch));
+        Assert.Single(room.History);
 
         GameRoom stored = await game.Db.GameRooms.AsNoTracking().SingleAsync();
         Assert.Equal(GameRules.EmptyBoard, stored.Board);
         Assert.Equal(GameStatus.InProgress, stored.Status);
         Assert.Equal(PlayerSymbol.X, stored.CurrentTurn);
         Assert.Null(stored.WinnerSymbol);
+    }
+
+    [Fact]
+    public async Task Rematch_KeepsHistoryAndRecordsTheNextRound()
+    {
+        using TestGame game = await CreateStartedGameAsync();
+        await FinishGameWithXWinAsync(game);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.XPlayerId);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.OPlayerId);
+
+        await FinishGameWithXWinAsync(game);
+
+        RoomInfo? loaded = await new RoomService(game.Db).GetRoomAsync(game.RoomCode);
+        Assert.NotNull(loaded);
+        Assert.Equal(2, loaded!.History.Count);
+        Assert.Equal(new[] { 1, 2 }, loaded.History.Select(item => item.RoundNumber));
+        Assert.All(loaded.History, item => Assert.Equal(PlayerSymbol.X, item.WinnerSymbol));
+    }
+
+    [Fact]
+    public async Task RoomStats_CountsWinsAndDrawsAcrossRematches()
+    {
+        using TestGame game = await CreateStartedGameAsync();
+        await FinishGameWithXWinAsync(game);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.XPlayerId);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.OPlayerId);
+        await FinishGameWithOWinAsync(game);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.XPlayerId);
+        await game.GameService.RequestRematchAsync(game.RoomCode, game.OPlayerId);
+        await FinishDrawAsync(game);
+
+        RoomInfo? loaded = await new RoomService(game.Db).GetRoomAsync(game.RoomCode);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(3, loaded!.Stats.MatchesPlayed);
+        Assert.Equal(1, loaded.Stats.Draws);
+        Assert.Equal(1, loaded.Stats.Players.Single(p => p.PlayerId == game.XPlayerId).Wins);
+        Assert.Equal(1, loaded.Stats.Players.Single(p => p.PlayerId == game.OPlayerId).Wins);
     }
 
     [Fact]
@@ -284,6 +333,29 @@ public class GameServiceTests
         await MoveAsync(game, game.XPlayerId, 1);
         await MoveAsync(game, game.OPlayerId, 4);
         await MoveAsync(game, game.XPlayerId, 2);
+    }
+
+    private static async Task FinishGameWithOWinAsync(TestGame game)
+    {
+        await MoveAsync(game, game.XPlayerId, 0);
+        await MoveAsync(game, game.OPlayerId, 3);
+        await MoveAsync(game, game.XPlayerId, 1);
+        await MoveAsync(game, game.OPlayerId, 4);
+        await MoveAsync(game, game.XPlayerId, 8);
+        await MoveAsync(game, game.OPlayerId, 5);
+    }
+
+    private static async Task<GameActionResult> FinishDrawAsync(TestGame game)
+    {
+        await MoveAsync(game, game.XPlayerId, 0);
+        await MoveAsync(game, game.OPlayerId, 1);
+        await MoveAsync(game, game.XPlayerId, 2);
+        await MoveAsync(game, game.OPlayerId, 4);
+        await MoveAsync(game, game.XPlayerId, 3);
+        await MoveAsync(game, game.OPlayerId, 5);
+        await MoveAsync(game, game.XPlayerId, 7);
+        await MoveAsync(game, game.OPlayerId, 6);
+        return await MoveAsync(game, game.XPlayerId, 8);
     }
 
     private sealed class TestGame : IDisposable

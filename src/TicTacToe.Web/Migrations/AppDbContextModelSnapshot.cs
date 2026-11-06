@@ -60,6 +60,35 @@ namespace TicTacToe.Web.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TicTacToe.Web.Entities.GameResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RoundNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WinnerSymbol")
+                        .HasColumnType("char(1)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "RoundNumber")
+                        .IsUnique();
+
+                    b.ToTable("GameResults", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GameResults_WinnerSymbol", "[WinnerSymbol] IS NULL OR [WinnerSymbol] IN ('X', 'O')");
+                        });
+                });
+
             modelBuilder.Entity("TicTacToe.Web.Entities.GameRoom", b =>
                 {
                     b.Property<Guid>("Id")
@@ -122,9 +151,22 @@ namespace TicTacToe.Web.Migrations
                     b.Navigation("Room");
                 });
 
+            modelBuilder.Entity("TicTacToe.Web.Entities.GameResult", b =>
+                {
+                    b.HasOne("TicTacToe.Web.Entities.GameRoom", "Room")
+                        .WithMany("Results")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
+                });
+
             modelBuilder.Entity("TicTacToe.Web.Entities.GameRoom", b =>
                 {
                     b.Navigation("Players");
+
+                    b.Navigation("Results");
                 });
 #pragma warning restore 612, 618
         }

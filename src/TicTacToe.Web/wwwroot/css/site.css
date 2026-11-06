@@ -558,6 +558,158 @@ input:focus-visible {
   line-height: 1.5;
 }
 
+.scorecard {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--paper-deep);
+}
+
+.scorecard h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.scorecard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.scorecard-total {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.scorecard-total strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.scorecard-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scorecard-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--paper-deep);
+}
+
+.scorecard-row:last-child {
+  border-bottom: 0;
+}
+
+.scorecard-mark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.scorecard-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scorecard-you {
+  margin-left: 6px;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scorecard-wins {
+  color: var(--ink-soft);
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.scorecard-wins strong {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.scorecard-row.is-you .scorecard-name {
+  font-weight: 600;
+}
+
+.history-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--paper-deep);
+}
+
+.history-block h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.history-list {
+  max-height: 210px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  list-style: none;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--paper-deep);
+  font-size: 0.86rem;
+}
+
+.history-item:last-child {
+  border-bottom: 0;
+}
+
+.history-round,
+.history-time {
+  color: var(--ink-soft);
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.history-result {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.history-mark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.history-empty {
+  padding: 4px 0;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
 @keyframes board-in {
   from {
     opacity: 0;

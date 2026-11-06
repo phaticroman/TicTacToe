@@ -72,6 +72,8 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | FR-10 | Winner Detection | The system detects when a player wins (three matching symbols in a row, column, or diagonal). | High |
 | FR-11 | Draw Detection | The system detects when all cells are occupied and there is no winner. | High |
 | FR-12 | Restart Game | After a game finishes, either player can request a rematch. The new game starts when both players agree. | Medium |
+| FR-13 | Room Match History | The room shows each finished match with its round number, winner or draw, and finish time. History is kept across rematches. | Medium |
+| FR-14 | Room Scorecard | The room shows how many matches have been played, how many ended in a draw, and how many wins each player has. The scorecard updates after every finished match and is kept across rematches. | Medium |
 
 ---
 
@@ -124,6 +126,8 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | Real-time game synchronization |
 | Winner and draw detection |
 | Restart / rematch functionality |
+| Match history within a room |
+| Room scorecard with matches played, draws, and wins per player |
 | Basic responsive UI |
 
 ### Out of Scope
@@ -134,7 +138,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | AI opponent |
 | Chat system |
 | Leaderboard |
-| Match history |
+| Move-by-move replay |
 | Spectator mode |
 | Tournament system |
 | Public matchmaking |
@@ -162,6 +166,8 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | AC-13 | FR-10, FR-11 | A player tries to move after the game has finished. | The move is rejected and the board does not change. |
 | AC-14 | FR-12 | After a game ends, a player requests a rematch and the opponent agrees. | The board is cleared and a new game starts in the same room. |
 | AC-15 | NFR-03 | A player's connection drops and returns. | The player is returned to the same room with the current board state, and the opponent was notified of the interruption. |
+| AC-16 | FR-13 | A game ends and then a rematch is played. | The room shows the finished round with its winner or draw, and keeps it after the rematch starts. |
+| AC-17 | FR-14 | Games are played and some end in a draw. | The scorecard shows the total matches played, the number of draws, and the win count for each player, including across rematches. |
 
 ---
 

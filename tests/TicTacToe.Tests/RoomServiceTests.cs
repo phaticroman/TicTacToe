@@ -229,6 +229,32 @@ public class RoomServiceTests
     }
 
     [Fact]
+    public async Task GetRoom_ReturnsHistoryTimestampsAsUtc()
+    {
+        using AppDbContext db = CreateContext();
+        var service = new RoomService(db);
+        RoomActionResult created = await service.CreateRoomAsync("Alice");
+        await service.JoinRoomAsync(created.RoomCode!, "Bob");
+        GameRoom room = await db.GameRooms.SingleAsync();
+
+        db.GameResults.Add(new GameResult
+        {
+            RoomId = room.Id,
+            RoundNumber = 1,
+            WinnerSymbol = PlayerSymbol.X,
+            EndedAt = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Unspecified)
+        });
+        await db.SaveChangesAsync();
+
+        RoomInfo? info = await service.GetRoomAsync(created.RoomCode!);
+
+        Assert.NotNull(info);
+        RoomHistoryInfo history = Assert.Single(info!.History);
+        Assert.Equal(DateTimeKind.Utc, history.EndedAt.Kind);
+        Assert.Equal(new DateTime(2026, 1, 2, 3, 4, 5), history.EndedAt);
+    }
+
+    [Fact]
     public async Task GetRoom_ReturnsNullForUnknownCode()
     {
         using AppDbContext db = CreateContext();

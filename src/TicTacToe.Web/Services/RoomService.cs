@@ -155,6 +155,7 @@ public class RoomService
         GameRoom? room = await _db.GameRooms
             .AsNoTracking()
             .Include(r => r.Players)
+            .Include(r => r.Results)
             .FirstOrDefaultAsync(r => r.RoomCode == normalizedCode, cancellationToken);
 
         if (room is null)
@@ -179,6 +180,7 @@ public class RoomService
 
         GameRoom? room = await _db.GameRooms
             .Include(r => r.Players)
+            .Include(r => r.Results)
             .FirstOrDefaultAsync(r => r.RoomCode == normalizedCode, cancellationToken);
 
         if (room is null)

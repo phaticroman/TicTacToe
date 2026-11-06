@@ -86,6 +86,65 @@
                 <p class="rematch-note" data-rematch-note role="status" aria-live="polite">@Model.RematchNote</p>
                 <button type="button" class="btn-play btn-rematch" data-rematch-button disabled="@Model.RematchButtonDisabled">@Model.RematchButtonText</button>
             </div>
+
+            <section class="scorecard" aria-labelledby="scorecard-title">
+                <div class="scorecard-head">
+                    <h2 id="scorecard-title">Scorecard</h2>
+                    <p class="scorecard-total">
+                        <strong data-score-played>@Model.Room.Stats.MatchesPlayed</strong> played
+                        <span aria-hidden="true">·</span>
+                        <strong data-score-draws>@Model.Room.Stats.Draws</strong> drawn
+                    </p>
+                </div>
+                <ul class="scorecard-list" data-score-list>
+                    @foreach (var tally in Model.Room.Stats.Players)
+                    {
+                        bool isYou = tally.PlayerId == Model.CurrentPlayer.PlayerId;
+                        <li class="scorecard-row@(isYou ? " is-you" : "")">
+                            <span class="scorecard-mark @(tally.Symbol == PlayerSymbol.X ? "mark-x" : "mark-o")" aria-label="@tally.Symbol">@tally.Symbol</span>
+                            <span class="scorecard-name">
+                                @tally.DisplayName
+                                @if (isYou)
+                                {
+                                    <span class="scorecard-you">you</span>
+                                }
+                            </span>
+                            <span class="scorecard-wins"><strong>@tally.Wins</strong> @(tally.Wins == 1 ? "win" : "wins")</span>
+                        </li>
+                    }
+                </ul>
+            </section>
+
+            <section class="history-block" aria-labelledby="history-title">
+                <h2 id="history-title">Match log</h2>
+                <ul class="history-list" data-history-list>
+                    @if (Model.Room.History.Count == 0)
+                    {
+                        <li class="history-empty">No finished matches yet.</li>
+                    }
+                    else
+                    {
+                        @foreach (var result in Model.Room.History.OrderByDescending(item => item.RoundNumber))
+                        {
+                            <li class="history-item">
+                                <span class="history-round">Game @result.RoundNumber</span>
+                                <span class="history-result">
+                                    @if (result.WinnerSymbol is null)
+                                    {
+                                        <text>Draw</text>
+                                    }
+                                    else
+                                    {
+                                        <span class="history-mark @(result.WinnerSymbol == PlayerSymbol.X ? "mark-x" : "mark-o")">@result.WinnerSymbol</span>
+                                        <span>@(result.WinnerName ?? result.WinnerSymbol.ToString()) won</span>
+                                    }
+                                </span>
+                                <time class="history-time" datetime="@result.EndedAt.ToString("o")">@result.EndedAt.ToLocalTime().ToString("HH:mm")</time>
+                            </li>
+                        }
+                    }
+                </ul>
+            </section>
         </aside>
     </div>
 </section>

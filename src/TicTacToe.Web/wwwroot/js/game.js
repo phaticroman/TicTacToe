@@ -17,6 +17,10 @@
   const rematchBox = document.querySelector("[data-rematch-box]");
   const rematchButton = document.querySelector("[data-rematch-button]");
   const rematchNote = document.querySelector("[data-rematch-note]");
+  const historyList = document.querySelector("[data-history-list]");
+  const scorePlayed = document.querySelector("[data-score-played]");
+  const scoreDraws = document.querySelector("[data-score-draws]");
+  const scoreList = document.querySelector("[data-score-list]");
 
   let state = null;
   let joined = false;
@@ -158,6 +162,119 @@
     return item;
   }
 
+  function formatHistoryTime(value) {
+    const endedAt = new Date(value);
+    if (Number.isNaN(endedAt.getTime())) {
+      return "";
+    }
+
+    return endedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function createHistoryItem(entry) {
+    const item = document.createElement("li");
+    item.className = "history-item";
+
+    const round = document.createElement("span");
+    round.className = "history-round";
+    round.textContent = "Game " + entry.roundNumber;
+
+    const result = document.createElement("span");
+    result.className = "history-result";
+
+    if (entry.winnerSymbol === null) {
+      result.textContent = "Draw";
+    } else {
+      const mark = document.createElement("span");
+      mark.className = "history-mark " + (entry.winnerSymbol === "X" ? "mark-x" : "mark-o");
+      mark.setAttribute("aria-label", entry.winnerSymbol);
+      mark.textContent = entry.winnerSymbol;
+
+      const label = document.createElement("span");
+      label.textContent = (entry.winnerName || entry.winnerSymbol) + " won";
+
+      result.append(mark, label);
+    }
+
+    const time = document.createElement("time");
+    time.className = "history-time";
+    time.dateTime = entry.endedAt;
+    time.textContent = formatHistoryTime(entry.endedAt);
+    time.title = new Date(entry.endedAt).toLocaleString();
+
+    item.append(round, result, time);
+    return item;
+  }
+
+  function updateHistory(room) {
+    if (!historyList) {
+      return;
+    }
+
+    const entries = (room.history || [])
+      .slice()
+      .sort((left, right) => right.roundNumber - left.roundNumber);
+
+    if (entries.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "history-empty";
+      empty.textContent = "No finished matches yet.";
+      historyList.replaceChildren(empty);
+      return;
+    }
+
+    historyList.replaceChildren(...entries.map(createHistoryItem));
+  }
+
+  function createScoreRow(tally) {
+    const isYou = tally.symbol === playerSymbol;
+    const item = document.createElement("li");
+    item.className = isYou ? "scorecard-row is-you" : "scorecard-row";
+
+    const mark = document.createElement("span");
+    mark.className = "scorecard-mark " + (tally.symbol === "X" ? "mark-x" : "mark-o");
+    mark.setAttribute("aria-label", tally.symbol);
+    mark.textContent = tally.symbol;
+
+    const name = document.createElement("span");
+    name.className = "scorecard-name";
+    name.textContent = tally.displayName;
+
+    if (isYou) {
+      const you = document.createElement("span");
+      you.className = "scorecard-you";
+      you.textContent = "you";
+      name.append(" ", you);
+    }
+
+    const wins = document.createElement("span");
+    wins.className = "scorecard-wins";
+    const count = document.createElement("strong");
+    count.textContent = tally.wins;
+    wins.append(count, " " + (tally.wins === 1 ? "win" : "wins"));
+
+    item.append(mark, name, wins);
+    return item;
+  }
+
+  function updateScorecard(room) {
+    if (!room.stats) {
+      return;
+    }
+
+    if (scorePlayed) {
+      scorePlayed.textContent = room.stats.matchesPlayed;
+    }
+
+    if (scoreDraws) {
+      scoreDraws.textContent = room.stats.draws;
+    }
+
+    if (scoreList) {
+      scoreList.replaceChildren(...room.stats.players.map(createScoreRow));
+    }
+  }
+
   function updateBoardInteractivity() {
     const canPlay = Boolean(state) &&
       joined &&
@@ -225,6 +342,8 @@
       gameNote.textContent = noteFor(room);
     }
 
+    updateHistory(room);
+    updateScorecard(room);
     updateBoardInteractivity();
     updateRematchControl();
   }

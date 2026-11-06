@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
 
     public DbSet<GameRoom> GameRooms => Set<GameRoom>();
     public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
+    public DbSet<GameResult> GameResults => Set<GameResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,10 @@ public class AppDbContext : DbContext
                 .WithOne(player => player.Room)
                 .HasForeignKey(player => player.RoomId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(room => room.Results)
+                .WithOne(result => result.Room)
+                .HasForeignKey(result => result.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<GamePlayer>(entity =>
@@ -47,6 +52,21 @@ public class AppDbContext : DbContext
             entity.ToTable("GamePlayers", table =>
             {
                 table.HasCheckConstraint("CK_GamePlayers_Symbol", "[Symbol] IN ('X', 'O')");
+            });
+        });
+
+        modelBuilder.Entity<GameResult>(entity =>
+        {
+            entity.HasKey(result => result.Id);
+            entity.Property(result => result.RoundNumber).IsRequired();
+            entity.Property(result => result.WinnerSymbol).HasConversion<string>().HasColumnType("char(1)");
+            entity.Property(result => result.EndedAt).HasColumnType("datetime2");
+            entity.HasIndex(result => new { result.RoomId, result.RoundNumber }).IsUnique();
+            entity.ToTable("GameResults", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_GameResults_WinnerSymbol",
+                    "[WinnerSymbol] IS NULL OR [WinnerSymbol] IN ('X', 'O')");
             });
         });
     }

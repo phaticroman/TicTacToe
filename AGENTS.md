@@ -9,9 +9,9 @@
 ## Repository state
 
 - .NET 10 solution `TicTacToe.slnx` with `src/TicTacToe.Web` (MVC app) and `tests/TicTacToe.Tests` (xUnit, references the web project).
-- `Data/AppDbContext.cs`, `Entities/`, and `Enums/` are schema setup. `Game/GameRules.cs` holds the pure move/win/draw rules. `Services/RoomService.cs` handles create/join/get-room persistence. `Services/GameService.cs` validates and persists moves.
+- `Data/AppDbContext.cs`, `Entities/`, and `Enums/` are schema setup. `Game/GameRules.cs` holds the pure move/win/draw rules. `Services/RoomService.cs` handles create/join/get-room persistence. `Services/GameService.cs` validates and persists moves and records one `GameResult` row per finished match.
 - MVC pages support creating/joining a room and viewing it. `Hubs/GameHub.cs` provides `JoinRoom`, `MakeMove`, and `RequestRematch`; `wwwroot/js/game.js` applies live `RoomState` updates through the vendored SignalR browser client.
-- Presence is tracked by `Services/PlayerConnectionTracker` (multi-connection per player), persisted through `GamePlayer.IsConnected`, and re-synced on join/reconnect. Rematch requests persist in `WantsRematch` until both players agree. The hub broadcasts board/status state and sends move/rematch rejections to the caller.
+- Presence is tracked by `Services/PlayerConnectionTracker` (multi-connection per player), persisted through `GamePlayer.IsConnected`, and re-synced on join/reconnect. Rematch requests persist in `WantsRematch` until both players agree. The hub broadcasts board, status, match-history, and room-scorecard state and sends move/rematch rejections to the caller.
 - Tests: `GameRulesTests` are pure; `RoomServiceTests`, `GameServiceTests`, `PlayerConnectionTrackerTests`, controller tests, and cookie tests use EF Core InMemory/`DefaultHttpContext` and do not need SQL Server.
 
 ## Commands (run from repo root)
@@ -29,7 +29,7 @@
 - SignalR at `/gamehub` for realtime; built-in DI; SQL Server + EF Core code-first; Bootstrap 5 + plain JS.
 - Single project folders: `Controllers/`, `Data/`, `Entities/`, `Enums/`, `Game/` (pure rules), `Hubs/`, `Models/` (view models), `Services/` (add as needed), `Views/`, `wwwroot/`.
 - Keep game logic out of controllers and hubs; use plain rule classes and a server-side service layer.
-- Out of scope: auth/login, AI, chat, match history, leaderboards, Redis, microservices, extra dependencies.
+- Out of scope: auth/login, AI, chat, move-by-move replay, leaderboards, Redis, microservices, extra dependencies.
 
 ## Web flow and guest identity
 
@@ -47,11 +47,12 @@
 - SignalR serializes enums as strings (`JsonStringEnumConverter`); browser comparisons use `"X"`, `"O"`, `"InProgress"`, etc.
 - `GameRooms.Board` is 9 characters, row-major (`-` empty, `X`/`O` occupied).
 - `Status` ∈ `WaitingForPlayer`, `InProgress`, `Won`, `Draw`; X always moves first.
-- Unique `RoomCode`; unique `(RoomId, Symbol)`; players cascade-delete with the room.
+- Unique `RoomCode`; unique `(RoomId, Symbol)`; unique `(RoomId, RoundNumber)` in `GameResults`; players/results cascade-delete with the room.
 - `RowVersion` is for optimistic concurrency; `GameService` rejects conflicting updates with a retry message.
 - SignalR browser asset is `wwwroot/lib/signalr/signalr.min.js` (npm `@microsoft/signalr` 10.0.11, the latest browser build); server packages use the installed .NET 10 shared framework.
 - Entity `Id` values are EF-generated on insert. Do not assign Guids in entity constructors; doing so makes newly added players look `Modified` instead of `Added`.
-- Rematch reuses the same room/players and only resets board, status, turn, winner, and `WantsRematch`.
+- Rematch reuses the same room/players and only resets board, status, turn, winner, and `WantsRematch`; `GameResults` history is kept.
+- Room scorecard totals are derived from `GameResults` (played = row count, draws = null winner, wins by player symbol); do not add duplicate counter columns.
 
 ## UI work
 

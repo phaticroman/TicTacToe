@@ -14,4 +14,5 @@ public class GameRoom
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public ICollection<GamePlayer> Players { get; set; } = new List<GamePlayer>();
+    public ICollection<GameResult> Results { get; set; } = new List<GameResult>();
 }

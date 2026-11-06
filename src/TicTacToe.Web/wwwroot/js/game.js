@@ -296,6 +296,26 @@
     await joinRoom();
   }
 
+  if (rematchButton) {
+    rematchButton.addEventListener("click", async () => {
+      if (pendingRematch || !joined || connection.state !== "Connected") {
+        return;
+      }
+
+      pendingRematch = true;
+      clearMoveError();
+      updateRematchControl();
+
+      try {
+        await connection.invoke("RequestRematch");
+      } catch (error) {
+        pendingRematch = false;
+        showMoveError(error.message || "Could not request a rematch.");
+        updateRematchControl();
+      }
+    });
+  }
+
   board.addEventListener("click", async (event) => {
     const cell = event.target.closest(".board-cell");
     if (!cell || cell.disabled || pendingMove || !joined || connection.state !== "Connected") {

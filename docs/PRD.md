@@ -24,6 +24,8 @@ TicTacToe Online is a simple browser-based multiplayer Tic Tac Toe game. Two pla
 
 One player creates a game room and receives a unique room code. The second player joins the room using that code. Both players then play in real time, and every move appears instantly on both screens.
 
+A second mode lets two players share one device and alternate turns on the same browser screen without creating a room.
+
 ---
 
 ## 3. Problem Statement
@@ -43,6 +45,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | G-03 | Real-time experience | Show each move on both players' screens without refreshing the page. |
 | G-04 | Fair play | Make sure all moves follow the game rules, checked by the server. |
 | G-05 | Easy to use | Provide a clean, simple interface that works on desktop and mobile. |
+| G-06 | Same-device play | Let two players share one screen and play without creating a room. |
 
 ---
 
@@ -74,6 +77,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | FR-12 | Restart Game | After a game finishes, either player can request a rematch. The new game starts when both players agree. | Medium |
 | FR-13 | Room Match History | The room shows each finished match with its round number, winner or draw, and finish time. History is kept across rematches. | Medium |
 | FR-14 | Room Scorecard | The room shows how many matches have been played, how many ended in a draw, and how many wins each player has. The scorecard updates after every finished match and is kept across rematches. | Medium |
+| FR-15 | Same-Device Mode | Two players can start a local match on one browser and take turns on the same screen without a room code. The server validates each move, and the local scorecard tracks matches, draws, and wins across rounds for the browser session. | Medium |
 
 ---
 
@@ -109,6 +113,15 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | 12 | System | Detects a winner or a draw. |
 | 13 | Both players | Can request a rematch. |
 
+### Same-Device Flow
+
+| Step | Actor | Action |
+|---|---|---|
+| 1 | Player | Opens the website and selects **Play on this device**. |
+| 2 | Both players | Take turns on the shared screen. |
+| 3 | System | Validates each move, detects a winner or draw, and updates the local scorecard. |
+| 4 | Both players | Start the next round without losing the score. |
+
 ---
 
 ## 9. Project Scope
@@ -128,6 +141,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | Restart / rematch functionality |
 | Match history within a room |
 | Room scorecard with matches played, draws, and wins per player |
+| Same-device two-player mode with a session scorecard |
 | Basic responsive UI |
 
 ### Out of Scope
@@ -168,6 +182,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | AC-15 | NFR-03 | A player's connection drops and returns. | The player is returned to the same room with the current board state, and the opponent was notified of the interruption. |
 | AC-16 | FR-13 | A game ends and then a rematch is played. | The room shows the finished round with its winner or draw, and keeps it after the rematch starts. |
 | AC-17 | FR-14 | Games are played and some end in a draw. | The scorecard shows the total matches played, the number of draws, and the win count for each player, including across rematches. |
+| AC-18 | FR-15 | A player selects Play on this device, and both players take turns on one screen. | The server validates every move. When a round ends, the local scorecard reflects the result, and Play next round clears the board while keeping the score. |
 
 ---
 
@@ -186,6 +201,7 @@ TicTacToe Online solves this by offering a no-account, no-install game that star
 | A-07 | Internet multiplayer is possible after deployment or appropriate network configuration. |
 | A-08 | The server is responsible for validating game moves. |
 | A-09 | In a rematch, players keep their symbols and X moves first. |
+| A-10 | The same-device mode keeps the current game and score in the browser session; it does not create a room or persist results to the database. |
 
 ### Constraints
 

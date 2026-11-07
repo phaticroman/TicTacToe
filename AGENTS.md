@@ -11,8 +11,9 @@
 - .NET 10 solution `TicTacToe.slnx` with `src/TicTacToe.Web` (MVC app) and `tests/TicTacToe.Tests` (xUnit, references the web project).
 - `Data/AppDbContext.cs`, `Entities/`, and `Enums/` are schema setup. `Game/GameRules.cs` holds the pure move/win/draw rules. `Services/RoomService.cs` handles create/join/get-room persistence. `Services/GameService.cs` validates and persists moves and records one `GameResult` row per finished match.
 - MVC pages support creating/joining a room and viewing it. `Hubs/GameHub.cs` provides `JoinRoom`, `MakeMove`, and `RequestRematch`; `wwwroot/js/game.js` applies live `RoomState` updates through the vendored SignalR browser client.
+- Same-device play uses `LocalGameController`, `Services/LocalGameService`, and `Views/LocalGame/Index.cshtml`; state and the local scorecard live in ASP.NET Core session storage, while `wwwroot/js/local-game.js` posts moves to the server and updates the board.
 - Presence is tracked by `Services/PlayerConnectionTracker` (multi-connection per player), persisted through `GamePlayer.IsConnected`, and re-synced on join/reconnect. Rematch requests persist in `WantsRematch` until both players agree. The hub broadcasts board, status, match-history, and room-scorecard state and sends move/rematch rejections to the caller.
-- Tests: `GameRulesTests` are pure; `RoomServiceTests`, `GameServiceTests`, `PlayerConnectionTrackerTests`, controller tests, and cookie tests use EF Core InMemory/`DefaultHttpContext` and do not need SQL Server.
+- Tests: `GameRulesTests` are pure; `LocalGameServiceTests` and `LocalGameControllerTests` use an in-memory test session; `RoomServiceTests`, `GameServiceTests`, `PlayerConnectionTrackerTests`, controller tests, and cookie tests use EF Core InMemory/`DefaultHttpContext` and do not need SQL Server.
 
 ## Commands (run from repo root)
 
@@ -33,14 +34,16 @@
 
 ## Web flow and guest identity
 
-- Routes: `GET /` (home), `POST /Home/Create`, `POST /Home/Join`, `GET /Game?code=...`. Forms use anti-forgery tokens.
+- Routes: `GET /` (home), `POST /Home/Create`, `POST /Home/Join`, `GET /Game?code=...`, `GET /LocalGame`, `POST /LocalGame/Move`, `POST /LocalGame/NewRound`. Forms and local-game fetches use anti-forgery tokens.
 - Guest identity uses the HttpOnly cookie `tictactoe.guest` with value `{roomCode}:{playerId}` (12-hour expiry, SameSite Lax, Secure when HTTPS). Helpers: `Services/GuestIdentityExtensions.cs`.
+- Local mode uses ASP.NET Core session (`TicTacToe.LocalGame` key) with a 2-hour idle timeout and no database writes; `POST` bodies carry only `cellIndex`, and the server reuses `GameRules`.
 - `GameController.Index` requires the cookie's room code to match `code` (when provided) and the player ID to belong to that room; otherwise it clears the cookie and redirects home.
 - View models live in `Models/`; `GameViewModel` derives the status text and CSS class. The UI uses the graph-paper game-sheet style in `wwwroot/css/site.css`.
 
 ## Server authority and data invariants
 
 - Clients send only the chosen cell, never board state. Validate identity, membership, turn, and cell server-side.
+- Local mode derives the player from the stored turn, applies `GameRules`, and updates the session game only on a valid move; clients never send board or score values.
 - Guest identity is `GamePlayers.Id`; do not persist SignalR connection IDs.
 - `GameHub.JoinRoom` validates the guest cookie, stores room/player in `Context.Items`, then joins group `room:{CODE}`. `MakeMove` reuses that state; `RoomState` goes to the group and `MoveRejected` goes to the caller.
 - Do not add `CancellationToken` parameters to hub methods: SignalR counts them as client arguments. Use `Context.ConnectionAborted` inside the method instead.
@@ -53,6 +56,7 @@
 - Entity `Id` values are EF-generated on insert. Do not assign Guids in entity constructors; doing so makes newly added players look `Modified` instead of `Added`.
 - Rematch reuses the same room/players and only resets board, status, turn, winner, and `WantsRematch`; `GameResults` history is kept.
 - Room scorecard totals are derived from `GameResults` (played = row count, draws = null winner, wins by player symbol); do not add duplicate counter columns.
+- Local scorecard counters live only in session state and reset when the local session expires; they are not persisted to SQL Server.
 
 ## UI work
 

@@ -49,5 +49,14 @@
                 <button type="submit" class="btn-play btn-outline-ink">Join room</button>
             </form>
         </section>
+
+        <div class="play-divider"><span>or share a screen</span></div>
+
+        <section class="play-section" aria-labelledby="local-title">
+            <h2 id="local-title">Play on this device</h2>
+            <p>No room code needed. Two players take turns on this screen.</p>
+
+            <a class="btn-play btn-outline-ink local-launch" asp-controller="LocalGame" asp-action="Index">Start local match</a>
+        </section>
     </div>
 </section>

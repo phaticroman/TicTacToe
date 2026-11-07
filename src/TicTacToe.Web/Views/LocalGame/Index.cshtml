@@ -1,0 +1,125 @@
+@model LocalGameViewModel
+@{
+    ViewData["Title"] = "Local match";
+
+    bool xIsUp = Model.Status == GameStatus.InProgress && Model.CurrentTurn == PlayerSymbol.X;
+    bool oIsUp = Model.Status == GameStatus.InProgress && Model.CurrentTurn == PlayerSymbol.O;
+
+    string xPlayerClass = xIsUp ? "player is-turn" : "player";
+    string oPlayerClass = oIsUp ? "player is-turn" : "player";
+
+    string xNote = Model.Status == GameStatus.InProgress
+        ? (xIsUp ? "up now" : "waiting")
+        : "round over";
+    string oNote = Model.Status == GameStatus.InProgress
+        ? (oIsUp ? "up now" : "waiting")
+        : "round over";
+}
+
+<section class="game-layout"
+         aria-labelledby="local-title"
+         data-local-game
+         data-move-url="@Url.Action("Move", "LocalGame")"
+         data-new-round-url="@Url.Action("NewRound", "LocalGame")"
+         data-board="@Model.Board"
+         data-status="@Model.Status"
+         data-current-turn="@Model.CurrentTurn"
+         data-winner-symbol="@Model.WinnerSymbol">
+    <header class="game-header">
+        <div>
+            <p class="room-label">Same device</p>
+            <h1 class="room-code local-title" id="local-title">Pass &amp; play</h1>
+        </div>
+        <span class="status-chip @Model.StatusClass" data-local-status role="status" aria-live="polite">@Model.StatusText</span>
+    </header>
+
+    <div class="game-body">
+        <div class="board-wrap">
+            <div class="board"
+                 role="group"
+                 aria-label="Tic Tac Toe board"
+                 data-local-board>
+                @for (int i = 0; i < 9; i++)
+                {
+                    char cell = Model.Board[i];
+                    string markClass = cell == 'X' ? "mark-x" : cell == 'O' ? "mark-o" : string.Empty;
+                    string cellLabel = cell == '-' ? "empty" : cell.ToString();
+                    <button type="button"
+                            class="board-cell @markClass"
+                            data-cell-index="@i"
+                            aria-label="Cell @(i + 1): @cellLabel"
+                            disabled>@(cell == '-' ? string.Empty : cell.ToString())</button>
+                }
+            </div>
+
+            <p class="board-note">Both players use this screen. X always goes first.</p>
+            <p class="move-error" data-local-error role="alert" aria-live="assertive" hidden></p>
+
+            <noscript>
+                <p class="board-note">Local moves need JavaScript. Enable it and refresh the page.</p>
+            </noscript>
+        </div>
+
+        <aside class="players-panel" aria-labelledby="players-title">
+            <h2 id="players-title">Players</h2>
+            <ul class="player-list">
+                <li class="@xPlayerClass" data-local-player="X">
+                    <span class="player-symbol mark-x" aria-label="X">X</span>
+                    <span class="player-name">Player X</span>
+                    <span class="player-meta">
+                        <span class="player-note" data-local-player-note>@xNote</span>
+                    </span>
+                </li>
+                <li class="@oPlayerClass" data-local-player="O">
+                    <span class="player-symbol mark-o" aria-label="O">O</span>
+                    <span class="player-name">Player O</span>
+                    <span class="player-meta">
+                        <span class="player-note" data-local-player-note>@oNote</span>
+                    </span>
+                </li>
+            </ul>
+
+            <p class="waiting-note" data-local-note role="status" aria-live="polite">@Model.GameNote</p>
+
+            <div class="rematch-box local-round-box" data-local-round-box @(Model.IsGameOver ? "" : "hidden")>
+                <p class="rematch-note">The score carries over.</p>
+                <button type="button" class="btn-play btn-rematch" data-local-new-round>Play next round</button>
+            </div>
+
+            <section class="scorecard" aria-labelledby="scorecard-title">
+                <div class="scorecard-head">
+                    <h2 id="scorecard-title">Scorecard</h2>
+                    <p class="scorecard-total">
+                        <strong data-local-score-played>@Model.MatchesPlayed</strong> played
+                        <span aria-hidden="true">·</span>
+                        <strong data-local-score-draws>@Model.Draws</strong> drawn
+                    </p>
+                </div>
+                <ul class="scorecard-list">
+                    <li class="scorecard-row">
+                        <span class="scorecard-mark mark-x" aria-label="X">X</span>
+                        <span class="scorecard-name">Player X</span>
+                        <span class="scorecard-wins">
+                            <strong data-local-x-wins>@Model.XWins</strong>
+                            <span data-local-x-wins-label>@(Model.XWins == 1 ? "win" : "wins")</span>
+                        </span>
+                    </li>
+                    <li class="scorecard-row">
+                        <span class="scorecard-mark mark-o" aria-label="O">O</span>
+                        <span class="scorecard-name">Player O</span>
+                        <span class="scorecard-wins">
+                            <strong data-local-o-wins>@Model.OWins</strong>
+                            <span data-local-o-wins-label>@(Model.OWins == 1 ? "win" : "wins")</span>
+                        </span>
+                    </li>
+                </ul>
+            </section>
+        </aside>
+    </div>
+</section>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="~/js/local-game.js" asp-append-version="true"></script>
+}

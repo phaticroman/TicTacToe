@@ -315,6 +315,11 @@ input:focus-visible {
   background: var(--paper);
 }
 
+.local-launch {
+  display: inline-block;
+  text-decoration: none;
+}
+
 .validation-summary {
   margin-bottom: 22px;
   padding: 10px 14px;
@@ -381,6 +386,11 @@ input:focus-visible {
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 700;
   letter-spacing: 0.18em;
+}
+
+.local-title {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.02em;
 }
 
 .status-chip {
@@ -533,6 +543,16 @@ input:focus-visible {
   font-weight: 600;
 }
 
+.player.is-turn {
+  padding-left: 8px;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.player.is-turn .player-note {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .player-symbol {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.5rem;
@@ -556,6 +576,22 @@ input:focus-visible {
   color: var(--ink-soft);
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.local-round-box {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--paper-deep);
+}
+
+.local-round-box .rematch-note {
+  margin: 0 0 4px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.local-round-box .btn-play {
+  width: 100%;
 }
 
 .scorecard {
